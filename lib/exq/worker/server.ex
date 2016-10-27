@@ -20,6 +20,7 @@ defmodule Exq.Worker.Server do
 
   alias Exq.Middleware.Server, as: Middleware
   alias Exq.Middleware.Pipeline
+  require Logger
 
   defmodule State do
     defstruct job_serialized: nil, manager: nil, queue: nil, namespace: nil,
@@ -62,11 +63,14 @@ defmodule Exq.Worker.Server do
   Calls :dispatch to then call target module.
   """
   def handle_cast(:work, state) do
+    Logger.info("Exq worker working #{inspect(state)}")
     state = %{state | middleware_state: Middleware.all(state.middleware)}
     state = %{state | pipeline: before_work(state)}
     case state |> Map.fetch!(:pipeline) |> Map.get(:terminated, false) do
       # case done to run the after hooks
-      true -> nil
+      true ->
+        Logger.info("Exq worker terminated after before_work pipeline: #{inspect(state)}")
+        nil
       _ -> GenServer.cast(self, :dispatch)
     end
     {:noreply, state}
@@ -77,6 +81,7 @@ defmodule Exq.Worker.Server do
   Dispatch work to the target module (call :perform method of target)
   """
   def handle_cast(:dispatch, state) do
+    Logger.info("Exq worker dispatch #{inspect(state)}")
     dispatch_work(state.pipeline.assigns.worker_module, state.pipeline.assigns.job.args)
     {:noreply, state }
   end

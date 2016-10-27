@@ -225,8 +225,10 @@ defmodule Exq.Manager.Server do
   def dequeue_and_dispatch(state, queues) do
     rescue_timeout({state, state.poll_timeout}, fn ->
       jobs = Exq.Redis.JobQueue.dequeue(state.redis, state.namespace, state.host, queues)
+      Logger.info("Exq dequeued jobs: #{inspect(jobs)}")
 
       job_results = jobs |> Enum.map(fn(potential_job) -> dispatch_job(state, potential_job) end)
+      Logger.info("Exq dispatched job results: #{inspect(job_results)}")
 
       cond do
         Enum.any?(job_results, fn(status) -> elem(status, 1) == :dispatch end) ->
@@ -270,6 +272,7 @@ defmodule Exq.Manager.Server do
       state.workers_sup,
       [job, state.pid, queue, state.work_table,
        state.stats, state.namespace, state.host, state.redis, state.middleware])
+    Logger.info("Exq worker started: #{inspect(worker)}")
     Exq.Worker.Server.work(worker)
     update_worker_count(state.work_table, queue, 1)
   end
