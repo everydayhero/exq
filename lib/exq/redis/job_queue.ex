@@ -39,6 +39,8 @@ defmodule Exq.Redis.JobQueue do
       response = Connection.qp(redis, [
         ["SADD", full_key(namespace, "queues"), queue],
         ["LPUSH", queue_key(namespace, queue), job_serialized]])
+        
+      Logger.info("Exq enqueue response: #{inspect(response)}")
 
       case response do
         {:ok, [%Redix.Error{}, %Redix.Error{}]} = error -> error
